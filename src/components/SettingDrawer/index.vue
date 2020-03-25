@@ -10,7 +10,7 @@
         <h2>整体风格设置</h2>
         <a-radio-group
           @change="e => handleSettingChange('navTheme', e.target.value)"
-          :value="$route.query.navTheme || 'dark'"
+          :value="this.$route.query.navTheme || 'dark'"
         >
           <a-radio value="dark">黑色</a-radio>
           <a-radio value="light">白色</a-radio>
@@ -18,7 +18,7 @@
         <h2>导航模式</h2>
         <a-radio-group
           @change="e => handleSettingChange('navLayout', e.target.value)"
-          :value="$route.query.navLayout || 'left'"
+          :value="this.$route.query.navLayout || 'left'"
         >
           <a-radio value="left">左侧</a-radio>
           <a-radio value="top">顶部</a-radio>
@@ -38,9 +38,7 @@ export default {
   },
   methods: {
     handleSettingChange(type, value) {
-      console.log("类型", type);
-      console.log("类型", value);
-      this.$router.push({ query: { ...this.$router.query, [type]: value } }); // 通知路由风格设计
+      this.$router.push({ query: { ...this.$route.query, [type]: value } }); // 通知路由风格设计
     }
   }
 };

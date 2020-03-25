@@ -9,6 +9,7 @@ Vue.use(VueRouter);
 const routes = [
   {
     path: "/user",
+    hideInMenu: true, // 添加一个不渲染的标识符
     component: () => {
       return import(/* webpackChunkName: "user" */ "../layouts/UserLayout.vue");
     },
@@ -58,7 +59,7 @@ const routes = [
           {
             path: "/dashboard/analysis",
             name: "analysis",
-            meta: { title: "分析页" },
+            meta: { title: "分析页", icon: "dot-chart" },
             component: () =>
               import(
                 /* webpackChunkName: "dashboard" */ "../views/Dashboard/Analysis"
@@ -77,7 +78,7 @@ const routes = [
           {
             path: "/form/basic-form",
             name: "basicform",
-            meta: { title: "基础表单" },
+            meta: { title: "基础表单", icon: "container" },
             component: () =>
               import(/* webpackChunkName: "form" */ "../views/Forms/BasicForm")
           },
@@ -85,7 +86,7 @@ const routes = [
             path: "/form/step-form",
             name: "stepform",
             hideChildrenInMenu: true,
-            meta: { title: "分布表单" },
+            meta: { title: "分布表单", icon: "file-markdown" },
             component: () =>
               import(/* webpackChunkName: "form" */ "../views/Forms/StepForm"),
             children: [
@@ -127,7 +128,8 @@ const routes = [
   {
     path: "*",
     name: "404",
-    component: NotFond
+    component: NotFond,
+    hideInMenu: true
   }
 ];
 

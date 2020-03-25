@@ -370,7 +370,7 @@ vsCode-> 应用商店-> Ant Deisign Vue helper
     <h2>整体风格设置</h2>
     <a-radio-group
       @change="e => handleSettingChange('navTheme', e.target.value)"
-      :value="$route.query.navTheme || 'dark'"
+      :value="this.$route.query.navTheme || 'dark'"
     >
       <a-radio value="dark">黑色</a-radio>
       <a-radio value="white">白色</a-radio>
@@ -378,7 +378,7 @@ vsCode-> 应用商店-> Ant Deisign Vue helper
     <h2>导航模式</h2>
     <a-radio-group
       @change="e => handleSettingChange('navLayout', e.target.value)"
-      :value="$route.query.navLayout || 'left'"
+      :value="this.$route.query.navLayout || 'left'"
     >
       <a-radio value="left">左侧</a-radio>
       <a-radio value="top">顶部</a-radio>
@@ -391,7 +391,7 @@ vsCode-> 应用商店-> Ant Deisign Vue helper
     handleSettingChange(type, value) {
       console.log('类型', type)
       console.log('类型', value)
-      this.$router.push({ query: { ...this.$router.query, [type]: value } }) // 通知路由风格设计
+      this.$router.push({ query: { ...this.$route.query, [type]: value } }) // 通知路由风格设计
     }
 ```
 
@@ -469,6 +469,292 @@ vsCode-> 应用商店-> Ant Deisign Vue helper
   })
   ```
 
+# 设计左侧菜单和路由的关系
+
+**注意了:左侧菜单往往跟当前 fu 登陆者的权限有关系，这一类数据可能是后端返回的，可能是多级的关系，那么就要用到递归的方式，所以我们用 Antd 中‘单文件递归菜单’**
+
+- layouts->SiderMenu.vue
+- 递归当前 Antd 版本-1.5.0-rc.5 版本
+- 你会发现你复制过来的代码有点乱，还报错，还可能看不大懂对吗?
+- 因为这个代码中包含了左侧菜单的样式，还有一个递归项：SubMenu
+- 索性咱们将 SubMenu 抽离出来做一个递归组件，于是呢，你就再 layouts 下面新建 SubMenu.vue，代码应该是这样的
+
+```html
+<template functional>
+  <a-sub-menu :key="props.menuInfo.key">
+    <span slot="title">
+      <a-icon type="mail" /><span>{{ props.menuInfo.title }}</span>
+    </span>
+    <template v-for="item in props.menuInfo.children">
+      <a-menu-item v-if="!item.children" :key="item.key">
+        <a-icon type="pie-chart" />
+        <span>{{ item.title }}</span>
+      </a-menu-item>
+      <sub-menu v-else :key="item.key" :menu-info="item" />
+    </template>
+  </a-sub-menu>
+</template>
 ```
 
+```js
+<script>
+export default {
+  props: ['menuInfo'],
+  name: 'SubMenu',
+  // must add isSubMenu: true
+  isSubMenu: true
+}
+</script>
+
+```
+
+- 于是乎呢，拆解之后你的 SiderMenu 应该是这个样子的
+
+```html
+<template>
+  <div style="width: 256px">
+    <a-button
+      type="primary"
+      @click="toggleCollapsed"
+      style="margin-bottom: 16px"
+    >
+      <a-icon :type="collapsed ? 'menu-unfold' : 'menu-fold'" />
+    </a-button>
+    <a-menu
+      :defaultSelectedKeys="['1']"
+      :defaultOpenKeys="['2']"
+      mode="inline"
+      theme="dark"
+      :inlineCollapsed="collapsed"
+    >
+      <template v-for="item in list">
+        <a-menu-item v-if="!item.children" :key="item.key">
+          <a-icon type="pie-chart" />
+          <span>{{ item.title }}</span>
+        </a-menu-item>
+        <sub-menu v-else :menu-info="item" :key="item.key" />
+      </template>
+    </a-menu>
+  </div>
+</template>
+```
+
+```js
+<script>
+// 这个就是你新建的递归组件
+
+import SubMenu from './SubMenu'
+export default {
+  components: {
+    SubMenu
+  },
+  data() {
+    return {
+      collapsed: false,
+      list: [
+        {
+          key: '1',
+          title: 'Option 1'
+        },
+        {
+          key: '2',
+          title: 'Navigation 2',
+          children: [
+            {
+              key: '2.1',
+              title: 'Navigation 3',
+              children: [{ key: '2.1.1', title: 'Option 2.1.1' }]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  methods: {
+    toggleCollapsed() {
+      this.collapsed = !this.collapsed
+    }
+  }
+}
+</script>
+```
+
+- 至此呢，你的左侧菜单就出来了，剩下的调整样式
+
+  - 是不是宽了？ - 改啊,将 SliderMenu 宽度跟左侧布局的宽度调整一样
+
+    - SliderMenu.vue
+
+    ```html
+    <template>
+      <div style="width: 256px"></div>
+    </template>
+    ```
+
+    - BasicLayout.vue
+
+    ```html
+      <a-layout-sider
+       :theme="navTheme"
+       v-if="navLayout === 'left'"
+       :trigger="null"
+       collapsible
+       v-model="collapsed"
+       width="256px"  // 改成一个宽度即可
+     >
+     </a-layout-sider>
+    ```
+
+- 到这你的左侧菜单就出来了
+- 但是你发现切换主题颜色时，左侧 menu 没有颜色变化，我们要修改成同步的
+- SliderMenu
+
+```html
+<a-menu :defaultSelectedKeys="['1']" :defaultOpenKeys="['2']" mode="inline"
+:theme="theme" // 改成动态的 :inlineCollapsed="collapsed" >
+```
+
+```js
+  props: {
+    theme: {
+      type: String,
+      default: 'dark' // 默认黑色
+    }
+  },
+```
+
+- BasicLayout.vue
+
+```html
+<!-- 将当前页面切换的皮肤传进去 -->
+<SiderMenu :theme="navTheme" />
+```
+
+## 将我们需要的真实路由渲染到菜单上，实现菜单控制路由
+
+- router->index.js
+
+  - 注意：菜单应该是我登陆之后需要使用的一些功能页面的连接目录，我们希望通过点击菜单目录切换页面，所以有些路由我们不需要渲染到菜单列表中去
+
+    - 比如：登陆页面，渲染到菜单上没意义，我们不需要那么怎么办呢？
+    - **约定一：添加一个排除渲染的标签，比如叫：hideInMenu 属性**
+
+    ```js
+        path: '/user',
+          hideInMenu: true, // 添加一个不渲染的标识符
+        component: () => {
+        return import(/* webpackChunkName: "user" */ '../layouts/UserLayout.vue')
+       }
+
+    ```
+
+    - **约定二：我们之渲染带 name 属性的路由**
+    - **约定三：同级路由下的分步展示，比如分步表单，只是步骤的切换，而不是页面切换时，这种情况也不渲染 menu，比如：hideChildrenInMenu: true**
+
+    ```js
+     {
+            path: '/form/step-form',
+            name: 'stepform',
+            hideChildrenInMenu: true, // 注意看这里，分布操作时我们需要处理，子代路由不渲染
+            meta: { title: '分布表单' },
+            component: () =>
+              import(/* webpackChunkName: "form" */ '../views/Forms/StepForm'),
+            children: [
+              {
+    ```
+
+### 除此之外了，我们希望有菜单名称和 icon
+
+```js
+        path: '/dashboard',
+        name: 'dashboard',
+        meta: { icon: 'dashboard', title: '仪表盘' }, // 给你需要渲染的menu自定义一个对象用来渲染名称和icon
+        component: { render: h => h('router-view') },
+```
+
+### 接下来我们就要将规定好的路由渲染到 menu 上去了
+
+- SiderMenu.vue
+  - 将原有默认的 list 干掉
+  ```js
+    // 通过路由对象获取所有的路由信息
+    let menuData = this.getMenuData(this.$router.options.routes)
+
+   getMenuData(routes) {
+     // 递归的方式获取路由列表，筛选出我们索要呈现的列表
+     const menuData = []
+     routes.forEach(item => {
+       if (item.name && !item.hideInMenu) {
+         const newItem = { ...item }
+         delete newItem.children
+         if (item.children && !item.hideChildrenInMenu) {
+           newItem.children = this.getMenuData(item.children)
+         }
+         menuData.push(newItem)
+       } else if (
+         !item.hideInMenu &&
+         !item.hideChildrenInMenu &&
+         item.children
+       ) {
+         menuData.push(...this.getMenuData(item.children))
+       }
+       console.log('去你吗的', menuData)
+     })
+     return menuData
+   }
+   // 最后将list替换成menuData
+  ```
+- 修改模板
+
+```html
+<template>
+  <div style="width: 256px">
+    <a-menu
+      :defaultSelectedKeys="['1']"
+      :defaultOpenKeys="['2']"
+      mode="inline"
+      :theme="theme"
+      :inlineCollapsed="collapsed"
+    >
+      <!-- 将list改成menuData改成我们要的数据 -->
+      <template v-for="item in menuData">
+        <a-menu-item v-if="!item.children" :key="item.path">
+          <a-icon v-if="item.meta.icon" :type="item.meta.icon" />
+          <span>{{ item.meta.title }}</span>
+        </a-menu-item>
+        <sub-menu v-else :menu-info="item" :key="item.path" />
+      </template>
+    </a-menu>
+  </div>
+</template>
+```
+
+- 修改 SubMenu.vue
+
+```html
+<template functional>
+  <a-sub-menu :key="props.menuInfo.path">
+    <span slot="title">
+      <a-icon
+        v-if="props.menuInfo.meta.icon"
+        :type="props.menuInfo.meta.icon"
+      /><span>{{ props.menuInfo.meta.title }}</span>
+    </span>
+    <template v-for="item in props.menuInfo.children">
+      <a-menu-item v-if="!item.children" :key="item.key">
+        <a-icon v-if="item.meta.icon" :type="item.meta.icon" />
+        <span>{{ item.meta.title }}</span>
+      </a-menu-item>
+      <sub-menu v-else :key="item.path" :menu-info="item" />
+    </template>
+  </a-sub-menu>
+</template>
+<script>
+  export default {
+    props: ['menuInfo'],
+    name: 'SubMenu',
+    // must add isSubMenu: true
+    isSubMenu: true
+  }
+</script>
 ```
