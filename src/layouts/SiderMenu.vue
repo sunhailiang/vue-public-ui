@@ -1,8 +1,8 @@
 <template>
   <div style="width: 256px">
     <a-menu
-      :defaultSelectedKeys="['1']"
-      :defaultOpenKeys="['2']"
+      :selectedKeys="selectedKeys"
+      :openKeys="openKeys"
       mode="inline"
       :theme="theme"
       :inlineCollapsed="collapsed"
@@ -32,25 +32,40 @@ export default {
   },
   data() {
     let menuData = this.getMenuData(this.$router.options.routes);
+    this.selectedKeysMap = {};
+    this.openKeysMap = {};
     return {
       menuData,
       collapsed: false,
-      list: []
+      selectedKeys: [],
+      openKeys: []
     };
   },
   methods: {
     toggleCollapsed() {
       this.collapsed = !this.collapsed;
     },
-    getMenuData(routes) {
+    getMenuData(routes, parentKeys = [], selectedKey) {
       // 递归的方式获取路由列表，筛选出我们索要呈现的列表
       const menuData = [];
       routes.forEach(item => {
         if (item.name && !item.hideInMenu) {
+          this.openKeysMap[item.path] = parentKeys;
+          this.selectedKeysMap[item.path] = [item.path || selectedKey];
+
           const newItem = { ...item };
           delete newItem.children;
           if (item.children && !item.hideChildrenInMenu) {
-            newItem.children = this.getMenuData(item.children);
+            newItem.children = this.getMenuData(item.children, [
+              ...parentKeys,
+              item.path
+            ]);
+          } else {
+            this.getMenuData(
+              item.children,
+              selectedKey ? parentKeys : [...parentKeys, item.path],
+              selectedKey || item.path
+            );
           }
           menuData.push(newItem);
         } else if (
