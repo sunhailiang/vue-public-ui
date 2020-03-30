@@ -4,6 +4,15 @@ import router from "./router";
 import store from "./store";
 import { Button, Layout, Icon, Drawer, Radio, Menu } from "ant-design-vue";
 
+// 引入权限组件
+import Authority from "./components/Authority.vue";
+// 全局注册
+Vue.component("Authority", Authority);
+// 引入指令
+import auth from "./directives/auth";
+// 注册全局指令
+Vue.use(auth);
+
 Vue.config.productionTip = false;
 
 Vue.use(Button);

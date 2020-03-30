@@ -1091,4 +1091,97 @@ export default router
       })
 ```
 
-# 精细化权限控制(权限组件和权限指令)
+# 精细化权限控制(权限组件)
+- 权限组件
+   - 我们采用函数式组件方式，这样性能更好，但是函数式组件跟template模板不是很友好，所以我们直接采用render方式渲染
+   - components新建Authority组件
+   ```js
+   <script>
+import { check } from "@/auth/index";
+import { constants } from "os";
+export default {
+  functional: true,
+  props: {
+    authority: {
+      type: Array,
+      required: true
+    }
+  },
+  // 解释一个函数式渲染，render函数有两个参数，一个式creatElement，包含了dom的信息，但是指向的是一个虚拟的dom
+  // context 则包含了该实例对象的各种属性
+  // 如果你用了权限校验的组件，那么将会做判断
+  render(creatElement, context) {
+    const { props, scopedSlots } = context; // 结构出参数和所有的插槽
+    // 如果校验通过则执行该组件内部的插槽组件，否则怎么也不做
+    return check(props.authority) ? scopedSlots.default() : null;
+  }
+};
+</script>
+
+   ```
+- 既然是权限校验，那么在整个项目钟肯定会出现多次，所以我们注册成全局组件
+   - main.js
+   ```js
+   // 引入权限组件
+     import Authority from "./components/Authority.vue";
+   // 全局注册
+     Vue.component("Authority", Authority);
+   ```
+- 此时经过测试
+   - 如：全局样式的抽屉，只有admin才能操作设置
+   - layouts->BasicLayout.vue
+   ```html
+          此时你会发现只有admin时抽屉参会展示
+          <Authority :authority="['admin']"> 
+            <SettingDrawer />
+          </Authority>
+   ```
+- 至此：权限组件就Ok了
+
+# 精细化权限控制(权限指令)
+- 通过指令的方式来控制权限
+- 新建指令仓库 directives用来存放各种自定义指令
+- directives->auth.js
+```js
+import { check } from "@/auth/index";
+// 是否加载？
+function auth(Vue, options = []) {
+  Vue.directive(options.name || "auth", {
+    // 父级组件点调用时去判断
+    inserted(el, binding) {
+      // 如果传过来的值，没有通过校验就移除节点
+      if (!check(binding.value)) {
+        el.parentNode && el.parentNode.removeChild(el);
+      }
+    }
+  });
+}
+export default  auth
+
+```
+- 然后去进行指令的全局注册
+   - main.js
+```js
+// 引入指令
+import auth from "./directives/auth";
+// 注册全局指令
+Vue.use(auth);
+```
+- 测试
+   - layouts->BasicLayout.vue
+
+   ```js
+         <a-layout-header style="background: #fff; padding: 0">
+          <a-icon
+            v-auth="['admin']"   // 使用组件，修改权限名称，此时会发现会权限不足就没法渲染
+            class="trigger"
+            :type="collapsed ? 'menu-unfold' : 'menu-fold'"
+            @click="() => (collapsed = !collapsed)"
+          />
+          <Header />
+        </a-layout-header>
+   ```
+- 至此我们通过路由，组件，指令三种方式来控制权限
+- 注意：权限指令旨在第一次加载的时候有效果，如果动态的控制就会有问题
+- 注意: 灵活度比较高，但是写法上稍微复杂度高一些
+
