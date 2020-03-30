@@ -1090,3 +1090,5 @@ export default router
         description: '没有访问权限，请联系管理员'
       })
 ```
+
+# 精细化权限控制(权限组件和权限指令)
