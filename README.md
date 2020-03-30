@@ -672,10 +672,12 @@ export default {
         component: { render: h => h('router-view') },
 ```
 
-### 接下来我们就要将规定好的路由渲染到 menu 上去了
+### 接下来我们就要将规定好的路由信息渲染到 menu 上去了
 
 - SiderMenu.vue
+
   - 将原有默认的 list 干掉
+
   ```js
     // 通过路由对象获取所有的路由信息
     let menuData = this.getMenuData(this.$router.options.routes)
@@ -704,6 +706,7 @@ export default {
    }
    // 最后将list替换成menuData
   ```
+
 - 修改模板
 
 ```html
@@ -757,4 +760,333 @@ export default {
     isSubMenu: true
   }
 </script>
+```
+
+### 点击菜单跳转路由
+
+- SiderMenu.vue
+  - 外层路由链接
+
+```html
+<template>
+  <div style="width: 256px">
+    <a-menu
+      :selectedKeys="selectedKeys"
+      :openKeys.sync="openKeys"
+      mode="inline"
+      :theme="theme"
+    >
+      <template v-for="item in menuData">
+        <!-- 给每一个menu绑定一个点击事件，切换路由：看click事件 -->
+        <!-- 注意了：这里只是最外层链接哦,那如果路由曾经很多怎么办呢？是不是想到递归 -->
+        <a-menu-item
+          v-if="!item.children"
+          :key="item.path"
+          @click="
+            () =>
+              this.$router.push({ path: item.path, query: this.$router.query })  
+          "
+        >
+          <a-icon v-if="item.meta.icon" :type="item.meta.icon" />
+          <span>{{ item.meta.title }}</span>
+        </a-menu-item>
+        <sub-menu v-else :menu-info="item" :key="item.path" />
+      </template>
+    </a-menu>
+  </div>
+</template>
+```
+
+```js
+<script>
+import SubMenu from './SubMenu'
+export default {
+  components: {
+    SubMenu
+  },
+  props: {
+    theme: {
+      type: String,
+      default: 'dark'
+    }
+  },
+  data() {
+    this.selectedKeysMap = {}
+    this.openKeysMap = {}
+    let menuData = this.getMenuData(this.$router.options.routes)
+    return {
+      menuData,
+      collapsed: false,
+      selectedKeys: this.selectedKeysMap[this.$route.path],
+      openKeys: this.collapsed ? [] : this.openKeysMap[this.$route.path]
+    }
+  },
+  watch: {
+    '$route.path': function(val) {
+      // 同步观察路由变换实时更新
+      this.selectedKeys = this.selectedKeysMap[val]
+      this.openKeys = this.collapsed ? [] : this.openKeysMap[val]
+    }
+  },
+  methods: {
+    toggleCollapsed() {
+      this.collapsed = !this.collapsed
+    },
+    getMenuData(routes = [], parentKeys = [], selectedKey) {
+      // 递归的方式获取路由列表，筛选出我们索要呈现的列表
+      const menuData = []
+      routes.forEach(item => {
+        if (item.name && !item.hideInMenu) {
+          // 过滤只有带name的属性的路由信息和非隐藏路由
+          this.openKeysMap[item.path] = parentKeys
+          this.selectedKeysMap[item.path] = [item.path || selectedKey]
+
+          const newItem = { ...item }
+          delete newItem.children
+          if (item.children && !item.hideChildrenInMenu) {
+            // 如果存在子项，就继续递归子项-解决多级路由的问题
+            newItem.children = this.getMenuData(item.children, [
+              ...parentKeys,
+              item.path
+            ])
+          } else {
+            this.getMenuData(
+              item.children,
+              selectedKey ? parentKeys : [...parentKeys, item.path], // 解释这一步，这个解决什么呢，比如分布表单，我们点击步骤，不能按步骤跳吧，是他的父级路由才会发生跳转，所以呢，我们找他的父级路由作为跳转对象
+              selectedKey || item.path
+            )
+          }
+          menuData.push(newItem)
+        } else if (
+          !item.hideInMenu &&
+          !item.hideChildrenInMenu &&
+          item.children
+        ) {
+          menuData.push(
+            ...this.getMenuData(item.children, [...parentKeys, item.path])
+          )
+        }
+      })
+      return menuData
+    }
+  }
+}
+</script>
+```
+
+- SubMenu.vue
+  - 循环多层路由链接
+
+```html
+<template functional>
+  <a-sub-menu :key="props.menuInfo.path">
+    <span slot="title">
+      <a-icon
+        v-if="props.menuInfo.meta.icon"
+        :type="props.menuInfo.meta.icon"
+      /><span>{{ props.menuInfo.meta.title }}</span>
+    </span>
+    <template v-for="item in props.menuInfo.children">
+      <a-menu-item
+        v-if="!item.children"
+        :key="item.path"
+        @click=" 
+          () =>
+            parent.$router.push({
+              path: item.path,
+              query: parent.$router.query
+            })
+        "
+      >
+        <a-icon v-if="item.meta.icon" :type="item.meta.icon" />
+        <span>{{ item.meta.title }}</span>
+      </a-menu-item>
+      <sub-menu v-else :key="item.path" :menu-info="item" />
+    </template>
+  </a-sub-menu>
+</template>
+```
+
+# 路由权限管理
+
+- 根据用户权限，来渲染路由列表，达到权限控制的目的
+- 新建 anth 文件夹
+- auth->index.js
+
+```js
+// 获取权限
+export function getCurrentAuthority() {
+  // 这里返回的权限应该是从后端读取回来的，此时用admin替代
+  return ['admin']
+}
+
+// 鉴权
+export function check(authority) {
+  const current = getCurrentAuthority()
+  return current.some(item => authority.includes(item))
+}
+
+// 判断是否登陆
+export function isLogin() {
+  const current = getCurrentAuthority()
+  return current && current[0] !== 'guest'
+}
+```
+
+- 接下来去判断用户是否具有路由权限
+  - 1、给路由添加 authority 范围
+  - 2、在路由守卫中做统一处理
+- router->index.js
+- 在每个路由的 meta 对象中新增 authority 属性，然后 authority 的值就是权限类型
+- 如：
+
+```js
+{
+    path: "/",
+    meta:{authority:['user','admin']}, // 约定只有user和admin才能访问
+}
+```
+
+- 在比如：
+
+```js
+  {
+        path: '/form',
+        name: 'form',
+        component: { render: h => h('router-view') },
+        meta: { icon: 'form', title: '表单', authority: ['admin'] }, // 约定表单只有admin才能访问
+        redirect: '/form/basic-form'
+  }
+```
+
+- 普及一个新的知识点：lodash.js
+  - 这是个什么玩意儿呢？你可以理解成代码兵器库，what？，类似于 jquery 一样，用原生的 js 写出了很多趁手的常用的方法，供我们使用，很神奇，很高效哦~
+- 为了方便咱们开发我们可以引入这个库
+
+  - npm i --save lodash
+  - https://www.lodashjs.com/docs/lodash.concat
+
+- 使用 lodash import findLast from 'lodash/findLast' 引入即可
+- 引入权限控制的文件
+
+  - import { check, isLogin } from '@/auth/index'
+
+- router->index
+
+```js
+// 路由守卫
+const router = new VueRouter({
+  mode: 'history',
+  base: process.env.BASE_URL,
+  routes
+})
+
+router.beforeEach((to, from, next) => {
+  // 只有在路由地址发生变化时触发进度条
+  if (to.path != from.path) {
+    NProgress.start()
+  }
+  const record = findLast(to.matched, record => record.meta.authority)
+  if (record && !check(record.meta.authority)) {
+    // 如果没有权限
+    // 再次判断是否登陆了
+    if (!isLogin() && to.path !== '/user/login') {
+      //登陆直接跳到登录页页面
+      next({
+        path: '/user/login'
+      })
+    } else if (to.path !== '/403') {
+      // 如果权限不够直接去403，需要去新建一个403的页面和路由
+      next({
+        path: '/403'
+      })
+    }
+    nProgress.done()
+  }
+  next()
+})
+router.afterEach(() => {
+  NProgress.done()
+})
+
+export default router
+```
+
+- 新增一个 403
+
+```js
+  // 403页面
+  {
+    path: '/403',
+    name: '403',
+    component: Forbiden,
+    hideInMenu: true
+  },
+```
+
+- views->403.vue 新增一个页面
+- 此时你去修改 auth->index.js 中的权限，比如把 admin，改成 user，你会发现，你的表单直接跳到 403，why？ 那是因为你去 router->index，看看你新增的 meta 的 authority,是不是限制了权限？这样就关联起来了，懂么？
+- 但是此时依旧有一个问题，我们通常希望，没有权限的路由咱就直接不让你看见了对吧，所以要微调一下，既然你要控制菜单渲染，就要回到菜单中去 SiderMenu.vue
+
+```js
+    // 引入权限校验的类库
+    import { check } from '@/auth/index'
+    getMenuData(routes = [], parentKeys = [], selectedKey) {
+      // 递归的方式获取路由列表，筛选出我们索要呈现的列表
+      const menuData = []
+      routes.forEach(item => {
+        // 注意这里：这里就是如果权限不够呢，直接阻止列表渲染
+        if (item.meta && item.meta.authority && !check(item.meta.authority)) {
+          return false
+        }
+        if (item.name && !item.hideInMenu) {
+          // 过滤只有带name的属性的路由信息和非隐藏路由
+          this.openKeysMap[item.path] = parentKeys
+          this.selectedKeysMap[item.path] = [item.path || selectedKey]
+
+          const newItem = { ...item }
+          delete newItem.children
+          if (item.children && !item.hideChildrenInMenu) {
+            // 如果存在子项，就继续递归子项
+            newItem.children = this.getMenuData(item.children, [
+              ...parentKeys,
+              item.path
+            ])
+          } else {
+            this.getMenuData(
+              item.children,
+              selectedKey ? parentKeys : [...parentKeys, item.path], // 解释这一步，这个解决什么呢，比如分布表单，我们点击步骤，不能按步骤跳吧，是他的父级路由才会发生跳转，所以呢，我们找他的父级路由作为跳转对象
+              selectedKey || item.path
+            )
+          }
+          menuData.push(newItem)
+        } else if (
+          !item.hideInMenu &&
+          !item.hideChildrenInMenu &&
+          item.children
+        ) {
+          menuData.push(
+            ...this.getMenuData(item.children, [...parentKeys, item.path])
+          )
+        }
+      })
+      return menuData
+    }
+```
+
+- 此时你去修改 auth->index 中的权限时，就会发现菜单列表不满足权限的都没有渲染
+
+- 如果权限不够时，我希望有提示信息，于是乎呢，去 Antd 中找到 Notification 组件
+  - 然后在 403 时做一个提示
+- router->index
+
+```js
+    import { Notification } from 'ant-design-vue' // 引入组件
+
+    } else if (to.path !== '/403') {
+      // 如果权限不够直接去403，需要去新建一个403的页面和路由
+      Notification.error({ // 做一个403全局提示
+        message: '403',
+        description: '没有访问权限，请联系管理员'
+      })
 ```
