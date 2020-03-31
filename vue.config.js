@@ -14,7 +14,7 @@ module.exports = {
           if (req.headers.accept.indexOf("html") !== -1) {
             console.log("Skipping proxy for browser request.");
             return "/index.html";
-          } else {
+          } else if (process.env.MOCK === "true") {
             const name = req.path.split("/")[3];
             const mock = require(`./service/mock/index`)[name];
             const result = mock(req.method);

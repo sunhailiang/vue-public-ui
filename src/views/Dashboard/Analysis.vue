@@ -1,5 +1,7 @@
 <template>
-  <div><Chart :option="opitons" style="height:400px" /></div>
+  <div>
+    <Chart :option="opitons" style="height:400px" />
+  </div>
 </template>
 <script>
 import Chart from "@/components/chart/Chart";
@@ -47,6 +49,7 @@ export default {
   methods: {
     // 模拟mock数据
     getCharData() {
+      console.log("xxxxxx", this.$request);
       axios
         .get("/service/mock/chartData", { params: { ID: 12346 } })
         .then(res => {

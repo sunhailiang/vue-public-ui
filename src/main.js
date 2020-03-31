@@ -12,6 +12,9 @@ Vue.component("Authority", Authority);
 import auth from "./directives/auth";
 // 注册全局指令
 Vue.use(auth);
+// 使用axios二次封装的方法进行请求数据
+import request from "./utils/request";
+Vue.use(request);
 
 Vue.config.productionTip = false;
 

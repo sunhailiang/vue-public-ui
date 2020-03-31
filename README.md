@@ -1543,5 +1543,51 @@ Vue.use(auth)
 - 但是此时还有一个问题，就是如果你改了 mock 数据，页面并不会立马更新，因为有缓存,
 
 ```js
-delete require.cache[require.resolve(`./service/mock/index`)] //清除缓存这样，每次你只要一修改mock数据页面及时刷新
+delete require.cache[require.r
+esolve(`./service/mock/index`)] //清除缓存这样，每次你只要一修改mock数据页面及时刷新
 ```
+
+# 与服务端发生交互快速切换mock和正式环境
+- 说白了这一步就是区分一下环境变量，根据设置不同的环境变量来区分环境
+- package.json
+- 新增一个命令，设置mock环境标志，这样运行时就是mock状态
+- 先安装 cnpm i cross-env  运行跨平台设置和使用环境变量的脚本
+```js
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    // 新增serve:mock命令此时就会将MOCK设置成环境变量cross-env设置跨平台环境变量设置
+    "serve:mock": "cross-env MOCK=true vue-cli-service serve",
+    "build": "vue-cli-service build",
+    "test:unit": "vue-cli-service test:unit",
+    "lint": "vue-cli-service lint"
+  },
+```
+- vue.config.js
+- 根据环境变量来切换是否走mock接口
+```js
+  devServer: {
+    proxy: {
+      "/service": {
+        target: "http://localhost:3000",
+        bypass: function(req, res) {
+          if (req.headers.accept.indexOf("html") !== -1) {
+            console.log("Skipping proxy for browser request.");
+            return "/index.html";
+          } else if(process.env.MOCK==='true') { // 通过环境变量来执行下面mock代理
+            const name = req.path.split("/")[3];
+            const mock = require(`./service/mock/index`)[name];
+            const result = mock(req.method);
+            delete require.cache[require.resolve(`./service/mock/index`)]; //清除缓存这样，每次你只要一修改mock数据页面及时刷新
+            return res.send(result);
+          }
+        }
+      }
+    }
+  }
+```
+
+# 统一管理接口，二次封装请求文件
+- 新建utils工具箱
+- utils里面新建request.js文件用封装axios
+
+
