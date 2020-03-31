@@ -1,6 +1,6 @@
 import Vue from "vue";
 import App from "./App.vue";
-import router from "./router";
+import router from "./router/router_regurd";
 import store from "./store";
 import { Button, Layout, Icon, Drawer, Radio, Menu } from "ant-design-vue";
 
