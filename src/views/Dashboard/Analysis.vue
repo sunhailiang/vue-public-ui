@@ -5,8 +5,7 @@
 </template>
 <script>
 import Chart from "@/components/chart/Chart";
-// import { random } from 'lodash'
-import axios from "axios";
+import request from "@/utils/request";
 export default {
   data() {
     return {
@@ -49,31 +48,32 @@ export default {
   methods: {
     // 模拟mock数据
     getCharData() {
-      console.log("xxxxxx", this.$request);
-      axios
-        .get("/service/mock/chartData", { params: { ID: 12346 } })
-        .then(res => {
-          this.opitons = {
-            title: {
-              text: "ECharts 入门示例"
-            },
-            tooltip: {},
-            legend: {
-              data: ["销量"]
-            },
-            xAxis: {
-              data: ["衬衫", "羊毛衫", "雪纺衫", "裤子", "高跟鞋", "袜子"]
-            },
-            yAxis: {},
-            series: [
-              {
-                name: "销量",
-                type: "bar",
-                data: res.data
-              }
-            ]
-          };
-        });
+      request({
+        url: "/service/mock/chartData",
+        method: "get",
+        params: { ID: 12346 }
+      }).then(res => {
+        this.opitons = {
+          title: {
+            text: "ECharts 入门示例"
+          },
+          tooltip: {},
+          legend: {
+            data: ["销量"]
+          },
+          xAxis: {
+            data: ["衬衫", "羊毛衫", "雪纺衫", "裤子", "高跟鞋", "袜子"]
+          },
+          yAxis: {},
+          series: [
+            {
+              name: "销量",
+              type: "bar",
+              data: res.data
+            }
+          ]
+        };
+      });
     }
   },
   components: {

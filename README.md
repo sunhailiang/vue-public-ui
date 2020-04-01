@@ -1547,11 +1547,13 @@ delete require.cache[require.r
 esolve(`./service/mock/index`)] //清除缓存这样，每次你只要一修改mock数据页面及时刷新
 ```
 
-# 与服务端发生交互快速切换mock和正式环境
+# 与服务端发生交互快速切换 mock 和正式环境
+
 - 说白了这一步就是区分一下环境变量，根据设置不同的环境变量来区分环境
 - package.json
-- 新增一个命令，设置mock环境标志，这样运行时就是mock状态
-- 先安装 cnpm i cross-env  运行跨平台设置和使用环境变量的脚本
+- 新增一个命令，设置 mock 环境标志，这样运行时就是 mock 状态
+- 先安装 cnpm i cross-env 运行跨平台设置和使用环境变量的脚本
+
 ```js
   "scripts": {
     "serve": "vue-cli-service serve",
@@ -1562,8 +1564,10 @@ esolve(`./service/mock/index`)] //清除缓存这样，每次你只要一修改m
     "lint": "vue-cli-service lint"
   },
 ```
+
 - vue.config.js
-- 根据环境变量来切换是否走mock接口
+- 根据环境变量来切换是否走 mock 接口
+
 ```js
   devServer: {
     proxy: {
@@ -1587,7 +1591,453 @@ esolve(`./service/mock/index`)] //清除缓存这样，每次你只要一修改m
 ```
 
 # 统一管理接口，二次封装请求文件
-- 新建utils工具箱
-- utils里面新建request.js文件用封装axios
 
+- 新建 utils 工具箱
+- utils 里面新建 request.js 文件用封装 axios
 
+```js
+import axios from 'axios'
+import { Notification } from 'ant-design-vue'
+
+function request(options) {
+  return axios(options)
+    .then(res => {
+      return res
+    })
+    .catch(error => {
+      const {
+        response: { status, statusText }
+      } = error
+      // 请求失败提醒
+      Notification.error({
+        message: status,
+        description: statusText
+      })
+      // 返回reject的好处就是你在使用的时候，直接通过catch去捕捉，不会在进入then里面让你处理相关逻辑
+      return Promise.reject(error)
+    })
+}
+export default request
+```
+
+- 回到 Analysis.vue 中
+
+```js
+// 引入封装好的方法
+import request from '@/utils/request'
+  methods: {
+    // 模拟mock数据
+    getCharData() {
+      // 使用该方法
+      request({
+        url: '/service/mock/chartData',
+        method: 'get',
+        params: { ID: 12346 }
+      }).then(res => {
+        this.opitons = {
+          title: {
+            text: 'ECharts 入门示例'
+          },
+          tooltip: {},
+          legend: {
+            data: ['销量']
+          },
+          xAxis: {
+            data: ['衬衫', '羊毛衫', '雪纺衫', '裤子', '高跟鞋', '袜子']
+          },
+          yAxis: {},
+          series: [
+            {
+              name: '销量',
+              type: 'bar',
+              data: res.data
+            }
+          ]
+        }
+      })
+    }
+  },
+```
+
+- 此时呢你运行页面你会发现，数据请求成功，如果你改变请求地址，你还会发现错误信息提醒
+- 如果只不过呢，有一个问题如果我想给提示信息写一些特殊的样式怎么办？
+- 很明显这个 js 文件没法写单文件组件，那么 render？还是 jsx？前者写法比较复杂，那么咱们引入 jsx 吧
+  > 怎么用呢？ 看这：https://github.com/vuejs/jsx
+  > npm install @vue/babel-preset-jsx @vue/babel-helper-vue-jsx-merge-props
+  > babel.config.js 添加配置
+
+```js
+module.exports = {
+  presets: ['@vue/cli-plugin-babel/preset', '@vue/babel-preset-jsx'] // 添加jsx配置
+}
+```
+
+- request.js
+
+```js
+import axios from 'axios'
+import { Notification } from 'ant-design-vue'
+
+function request(options) {
+  return axios(options)
+    .then(res => {
+      return res
+    })
+    .catch(error => {
+      const {
+        response: { status, statusText }
+      } = error
+      // 请求失败提醒
+      Notification.error({
+        // 注意了：下面的这句注释,是用来告诉eslint不用校验了，否则h没使用过就会报错
+        //eslint-disable-next-line no-unused-vars
+        message: h => (
+          // 注意看这里：咱们就可以使用jsx语法定义想要的样式了
+          <div>
+            请求错误：<span style="color:red">{status}</span>
+            <br />
+            {options.url}
+          </div>
+        ),
+        description: statusText
+      })
+      // 返回reject的好处就是你在使用的时候，直接通过catch去捕捉，不会在进入then里面让你处理相关逻辑
+      return Promise.reject(error)
+    })
+}
+
+export default request
+```
+
+# 关于表单和表单校验（Antd）
+
+- 最简单粗暴的方式
+- 去 antd 复制粘贴一个基础表单出来
+- Forms->BasicForm.vue
+- 应该是这样的
+
+```html
+<template>
+  <a-form :layout="formLayout">
+    <a-form-item
+      label="Form Layout"
+      :label-col="formItemLayout.labelCol"
+      :wrapper-col="formItemLayout.wrapperCol"
+    >
+      <a-radio-group
+        default-value="horizontal"
+        @change="handleFormLayoutChange"
+      >
+        <a-radio-button value="horizontal">
+          Horizontal
+        </a-radio-button>
+        <a-radio-button value="vertical">
+          Vertical
+        </a-radio-button>
+        <a-radio-button value="inline">
+          Inline
+        </a-radio-button>
+      </a-radio-group>
+    </a-form-item>
+    <a-form-item
+      label="Field A"
+      :label-col="formItemLayout.labelCol"
+      :wrapper-col="formItemLayout.wrapperCol"
+    >
+      <a-input placeholder="input placeholder" />
+    </a-form-item>
+    <a-form-item
+      label="Field B"
+      :label-col="formItemLayout.labelCol"
+      :wrapper-col="formItemLayout.wrapperCol"
+    >
+      <a-input placeholder="input placeholder" />
+    </a-form-item>
+    <a-form-item :wrapper-col="buttonItemLayout.wrapperCol">
+      <a-button type="primary">
+        Submit
+      </a-button>
+    </a-form-item>
+  </a-form>
+</template>
+```
+
+```js
+<script>
+export default {
+  data() {
+    return {
+      formLayout: 'horizontal'
+    }
+  },
+  computed: {
+    formItemLayout() {
+      const { formLayout } = this
+      return formLayout === 'horizontal'
+        ? {
+            labelCol: { span: 4 },
+            wrapperCol: { span: 14 }
+          }
+        : {}
+    },
+    buttonItemLayout() {
+      const { formLayout } = this
+      return formLayout === 'horizontal'
+        ? {
+            wrapperCol: { span: 14, offset: 4 }
+          }
+        : {}
+    }
+  },
+  methods: {
+    handleFormLayoutChange(e) {
+      this.formLayout = e.target.value
+    }
+  }
+}
+</script>
+
+```
+
+- 接下来我们去自定义校验
+- 刚好 antd 也提供了自定义校验的东西
+
+```js
+// 你看官方提供了这么写属性供咱们使用
+validateStatus: 校验状态，可选 ‘success’, ‘warning’, ‘error’, ‘validating’。
+hasFeedback：用于给输入框添加反馈图标。
+help：设置校验文案
+```
+
+> 注意了：我们根据官方提供的这些属性改造一下表单校验
+
+```html
+<template>
+  <a-form :layout="formLayout">
+    <a-form-item
+      label="Form Layout"
+      :label-col="formItemLayout.labelCol"
+      :wrapper-col="formItemLayout.wrapperCol"
+    >
+      <a-radio-group
+        default-value="horizontal"
+        @change="handleFormLayoutChange"
+      >
+        <a-radio-button value="horizontal">
+          Horizontal
+        </a-radio-button>
+        <a-radio-button value="vertical">
+          Vertical
+        </a-radio-button>
+        <a-radio-button value="inline">
+          Inline
+        </a-radio-button>
+      </a-radio-group>
+    </a-form-item>
+    <a-form-item
+      label="姓名"
+      :label-col="formItemLayout.labelCol"
+      :wrapper-col="formItemLayout.wrapperCol"
+      :validateStatus="userErrorStatus"
+      :help="userHelpText"
+    >
+      <a-input placeholder="请输入用户名称" v-model="userName" />
+    </a-form-item>
+    <a-form-item
+      label="手机"
+      :label-col="formItemLayout.labelCol"
+      :wrapper-col="formItemLayout.wrapperCol"
+      :validateStatus="phoneErrorStatus"
+      :help="phoneHelpText"
+    >
+      <a-input type="number" placeholder="请输入手机号码" v-model="phone" />
+    </a-form-item>
+    <a-form-item :wrapper-col="buttonItemLayout.wrapperCol">
+      <a-button type="primary" @click="submitHandle">
+        Submit
+      </a-button>
+    </a-form-item>
+  </a-form>
+</template>
+```
+
+```js
+<script>
+export default {
+  data() {
+    return {
+      userErrorStatus: '',
+      userHelpText: '',
+      phoneErrorStatus: '',
+      phoneHelpText: '',
+      userName: '',
+      phone: '',
+      formLayout: 'horizontal'
+    }
+  },
+  watch: {
+    // 监听校验
+    userName(val) {
+      if (val.length < 2) {
+        ;(this.userErrorStatus = 'error'),
+          (this.userHelpText = '昵称长度不得少于两位')
+      } else {
+        ;(this.userErrorStatus = ''), (this.userHelpText = '')
+      }
+    },
+    phone(val) {
+      if (val.length < 11) {
+        ;(this.phoneErrorStatus = 'error'),
+          (this.phoneHelpText = '手机不得少于11位')
+      } else {
+        ;(this.phoneErrorStatus = ''), (this.phoneHelpText = '')
+      }
+    }
+  },
+  computed: {
+    formItemLayout() {
+      const { formLayout } = this
+      return formLayout === 'horizontal'
+        ? {
+            labelCol: { span: 4 },
+            wrapperCol: { span: 14 }
+          }
+        : {}
+    },
+    buttonItemLayout() {
+      const { formLayout } = this
+      return formLayout === 'horizontal'
+        ? {
+            wrapperCol: { span: 14, offset: 4 }
+          }
+        : {}
+    }
+  },
+  methods: {
+       // 提交校验
+    submitHandle() {
+      if (this.userName.length < 2) {
+        ;(this.userErrorStatus = 'error'),
+          (this.userHelpText = '昵称长度不得少于两位')
+        return
+      }
+      if (this.phone.length < 11) {
+        ;(this.phoneErrorStatus = 'error'),
+          (this.phoneHelpText = '手机不得少于11位')
+        return
+      }
+    },
+    handleFormLayoutChange(e) {
+      this.formLayout = e.target.value
+    }
+  }
+}
+</script>
+
+```
+
+- 嗯...看起来没什么问题，好像实现了~但是是不是有点繁琐了？？？？很明显不够人性，智能化，如果是个大表单，有的忙了~
+- 不写了，自己去 Antd 看官方的动态校验规则（仔细研究文档，一切答案都有）
+
+# 复杂的分布表单
+
+- 结合 vuex
+- store 中新建 moudles->form.js
+- 看上源码三个地方
+- store->moudles->form
+- store-> index
+- componens->ReceiverAccount.vue
+- views->Dashboard->Forms->Step1~
+  如果你看不懂，你就留言给我，我带你看~关于组件的使用
+
+# 关于项目中图标的管理
+
+- 添加项目需要用的 iconfont
+  去阿里矢量图库->图标管理->我的项目->新建项目
+
+## 关于 iconfont 的使用
+
+- 已阿里 icon 库为例：https://www.iconfont.cn/
+- 这是本地化操作
+  - 去 icon 官网找到适合的 iconfont
+  - 添加到购物车
+  - 将购物车中的要用的 icon 添加到项目
+  - 下载到本地
+  - 解压文件夹，将所有的字体文件和 iconfont.css 分别放到资源文件夹下
+  - 修改 iconfont.css 中字体路径
+  - 删除默认图标，直接使用 64 位或者 16 进制
+  - main.js 中引入 iconfont.css
+- 这是使用 cdn 的方式
+
+  - 将你需要的 icon 选中添加购物车
+  - 将购物车内的 icon 添加到项目
+  - 选择 Symbol 类型
+  - 查看在线链接
+  - 去 main.js
+
+  ```js
+  // 使用Icon
+  import { Icon } from 'ant-design-vue'
+  // 将cdn地址换成阿里图标我们的地址
+  const IconFont = Icon.createFromIconfontCN({
+    scriptUrl: '//at.alicdn.com/t/font_1729142_92zhgmdrlj8.js'
+  })
+  // 全局注册
+  Vue.component('IconFont', IconFont)
+  ```
+
+- 然后你可以选择在任何地方使用这个图片，这个 type 就是你图标库中的图标的名称
+- **注意：你可以改图标库中的名称等信息，但是你改完之后，会重新生成一个地址，你只要把那个地址重新覆盖到我们本地项目中就行了**
+- 我使用了 404 的图标放在 404 页面，你可以去看
+
+```html
+<IconFont type="iconicon-404"></IconFont>
+```
+
+## 特殊 ICon
+
+- 以上呢是现有满足我们的 icon，那如果我们设计师给我们特殊的 icon 呢?
+- 假设你已经拿到设计师设计好的 SVG 文件
+- 你可以直接引入这个 svg，然后给 img 的 src 属性就行了
+- 这里我们采用**组件式的 SVG** 更加方便一点，何为组件式？意思是一旦这样配置之后，我们将会向用组件一样用 SVG
+- 首先我们需要去 vue.config.js 中添加一个**vue-svg-loader**配置,如果没有需要安装一下
+- vue.config.js
+
+```js
+chainWebpack: config => {
+  const svgRule = config.module.rule('svg')
+
+  // 清除已有的所有 loader。
+  // 如果你不这样做，接下来的 loader 会附加在该规则现有的 loader 之后。
+  svgRule.uses.clear()
+
+  // 添加要替换的 loader
+  svgRule.use('vue-svg-loader').loader('vue-svg-loader')
+}
+```
+
+- 然后呢，你照常 import 这个 svg 就像这样
+- 404 页面
+
+```html
+<template>
+  <div style=" text-align:center">
+    <!-- 看，当组件用了，是不是方便一些 -->
+    <Man />
+  </div>
+</template>
+```
+
+```js
+import Man from '@/assets/man.svg' // 注意哦，此时你引入的是一个组件哦，所以需要干啥子？没错就是要注册
+export default {
+  components: {
+    // 注册组件
+    Man
+  }
+}
+```
+
+# 如何查看你配置的 loader 等配置项呢？
+
+- vue inspect > output.js

@@ -1,3 +1,4 @@
+// chart
 function chartData(method) {
   let res = null;
   switch (method) {
@@ -9,5 +10,18 @@ function chartData(method) {
   }
   return res;
 }
+// 分布表单
 
-module.exports = { chartData };
+function form(method) {
+  let res = null;
+  switch (method) {
+    case "POST":
+      res = { message: "ok" };
+      break;
+    default:
+      res = null;
+  }
+  return res;
+}
+
+module.exports = { chartData, form };
