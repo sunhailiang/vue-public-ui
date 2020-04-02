@@ -2041,3 +2041,19 @@ export default {
 # 如何查看你配置的 loader 等配置项呢？
 
 - vue inspect > output.js
+
+# 定制主题
+
+- vue.config.js
+
+```js
+      less: {
+        modifyVars: {
+          // 配置主题
+          'primary-color': '#1DA57A',
+          'link-color': '#1DA57A',
+          'border-radius-base': '2px'
+        },
+        javascriptEnabled: true
+      }
+```
