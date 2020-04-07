@@ -1,5 +1,6 @@
 <template>
   <div>
+    <a-date-picker @change="onChange" />
     <Chart :option="opitons" style="height:400px" />
   </div>
 </template>
@@ -46,6 +47,11 @@ export default {
     }, 5000);
   },
   methods: {
+    // 日期事件
+    onChange(date, dateString) {
+      console.log(date, dateString);
+    },
+
     // 模拟mock数据
     getCharData() {
       request({

@@ -2043,6 +2043,10 @@ export default {
 - vue inspect > output.js
 
 # 定制主题
+- 所谓定制呢，就是将封装一些跟页面整体设计色值或者特殊设计相关的通用的颜色或者圆角等信息封装成变量然后存储成一个文件，这样我们就可以直接引用文件，使用变量，从而降低代码冗余度
+- https://www.antdv.com/docs/vue/customize-theme-cn/
+- 这是Antd已经封装好的所有的变量，可以直接使用
+- https://github.com/vueComponent/ant-design-vue/blob/master/components/style/themes/default.less
 
 - vue.config.js
 
@@ -2051,9 +2055,217 @@ export default {
         modifyVars: {
           // 配置主题
           'primary-color': '#1DA57A',
+          // 链接颜色
           'link-color': '#1DA57A',
+          // 圆角设计
           'border-radius-base': '2px'
         },
         javascriptEnabled: true
       }
 ```
+- 此时重启服务，你会发现，页面的主题颜色，链接颜色，圆角都跟你上面配置的一致了
+
+## 动态切换主题
+
+- 安装插件
+   - cnpm i antd-theme-webpack-plugin
+   - http://npm.taobao.org/package/antd-theme-webpack-plugin
+- vue.config.js
+```js
+const path = require("path"); // 引入path模块
+const AntDesignThemePlugin = require("antd-theme-webpack-plugin");
+const options = {
+  antDir: path.join(__dirname, "./node_modules/ant-design-vue"),
+  stylesDir: path.join(__dirname, "./src"),
+  varFile: path.join( // 使用默认ant提供的默认的变量库
+    __dirname,
+    "./node_modules/ant-design-vue/lib/style/themes/default.less"
+  ),
+  mainLessFile: "",
+  themeVariables: ["@primary-color"],
+  generateOnce: false,
+  customColorRegexArray: [] // An array of regex codes to match your custom color variable values so that code can identify that it's a valid color. Make sure your regex does not adds false positives.
+};
+// 实例化一个主题对象
+const themePlugin = new AntDesignThemePlugin(options);
+
+module.exports = {
+   configureWebpack: {
+    plugins: [themePlugin]
+  },
+ // 使用插件
+}
+```
+- index.html
+```html
+  <!-- 主题插件配置 -->
+  <link rel="stylesheet/less" type="text/css" href="/color.less" />
+  <script>
+    window.less = {
+      async: false,
+      env: 'production',
+      javascriptEnabled: true,
+      modifyVars: {
+        // 配置默认主题
+        "primary-color": "#1DA57A"
+      },
+    };
+  </script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/less.js/2.7.2/less.min.js"></script>
+  <!-- 主题插件配置结束 -->
+```
+- 此时你打开控制台输入
+```js
+window.less.modifyVars({'primary-color':'red'})
+// 页面主题色是不是变了
+// 但是依旧有一个问题：我们把抽屉的按钮写死了，所以要做以下调整
+```
+- components/SettingDrawer
+   - 将index.vue中的handle类名换成一个不会重复的类名，将scope去掉
+      - 将样式提取出来放到新建的index.less中
+      - 然后引入index.less
+      ```html
+        <div class="setting-handle" @click="visible = !visible"></div>
+        <style lang="less">
+           @import url("./index.less");
+        </style>         
+      ```
+   - 新建index.less
+   ```css
+   /* 引入默认主题的less */
+   @import '~ant-design-vue/lib/style/themes/default.less' 
+   .setting-handle {
+      position: absolute;
+      top: 300px;
+      right: 268px;
+      background-color: saddlebrown;
+      height: 40px;
+      width: 40px;
+      line-height: 40px;
+      text-align: center;
+      background-color: @primary-color;
+      border-radius: 5px;
+      color: white;
+    }
+   ```
+   - 重新启动项目
+      - window.less.modifyVars({'primary-color':'red'}) 
+      - 你会发现，主题切换ok了...
+      - 接下来不用我说了吧，你只需要动态切换这个脚本就好啦
+   ## 重点，这样通过变脸去改变主题，其实呢如果项目很大性能损耗很大，实际生产环境中，可以通过主题文件进行切换，这样大大提高效率
+
+# 国际化
+- antd中明确的也有国际化的内容
+- 注册组件
+   - main.js
+   ```JS
+   import {
+  LocaleProvider
+} from "ant-design-vue";
+// 使用
+Vue.use(LocaleProvider)
+   ```
+- App.vue
+```html
+  <div id="app">
+    <LocaleProvider :locale="locale">
+      <router-view></router-view>
+    </LocaleProvider>
+  </div>
+```
+```js
+<script>
+import zhCN from "ant-design-vue/lib/locale-provider/zh_CN";
+import enUS from "ant-design-vue/lib/locale-provider/en_US";
+export default {
+  data() {
+    return {
+      locale: zhCN
+    };
+  },
+  watch: {
+    // 通过路由监听来切换语言
+    "$route.query.locale": function(val) {
+      this.locale = val === "enUS" ? enUS : zhCN;
+    }
+  }
+};
+</script>
+// 这是针对Antd自己的组件的国际化方法，但是比如日期，日历组件，使用第三方moment.js，无法像自己组件一样的随意切换，所以需要额外处理
+```
+- 处理第三方库的国际化问题
+
+```html
+  <div id="app">
+    <LocaleProvider :locale="locale">
+      <router-view></router-view>
+    </LocaleProvider>
+  </div>
+```
+```js
+<script>
+import zhCN from "ant-design-vue/lib/locale-provider/zh_CN";
+import enUS from "ant-design-vue/lib/locale-provider/en_US";
+import moment from "moment"; // 处理第三方库的国际化
+export default {
+  data() {
+    return {
+      locale: zhCN
+    };
+  },
+  watch: {
+    // 通过路由监听来切换语言
+    "$route.query.locale": function(val) {
+      this.locale = val === "enUS" ? enUS : zhCN;
+      moment(val === "enUS" ? enUS : zhCN);
+    }
+  }
+};
+</script>
+```
+- layout-Header中去添加一个切换语言的功能
+```html
+     <a-dropdown>
+      <a class="ant-dropdown-link" @click="e => e.preventDefault()">
+        <a-icon style="font-size:28px; margin-right:20px" type="global" />
+      </a>
+      <a-menu
+        slot="overlay"
+        @click="localeChange"
+        :selectedKeys="[$route.query.locale || 'zhCN']"
+      >
+        <a-menu-item key="zhCN">
+          <a href="javascript:;">中文</a>
+        </a-menu-item>
+        <a-menu-item key="enUS">
+          <a href="javascript:;">English</a>
+        </a-menu-item>
+      </a-menu>
+    </a-dropdown>
+    <!-- 当然了，用之前去main.js中去注册 -->
+```
+```js
+<script>
+export default {
+  data() {
+    return {};
+  },
+  methods: {
+    localeChange(obj) {
+      this.$router.push({ query: { locale: obj.key } });
+    }
+  }
+};
+</script>
+// 此时你点击切换语言就可以通过路由看到切换成功了
+// 怎么验证呢？
+// 引入一个日期组件看看
+// 是不是你会发现，中英文切换成功了
+```
+- 此时你会疑问，奇怪啊，难道就是日期有用，其他的文字没变啊，都还是中文，没错啊，应为那些中文是不是在之前开发中写死了？
+- 怎么解决这个问题？
+   - 你可以自己写json文件去处理，也就是什么能，原来写中文的地方换成一个占位符，然后进行文件读取，根据router参数判断读取的中文文件渲染还是英文文件渲染
+## 摊牌了，vue有国际化插件
+- https://kazupon.github.io/vue-i18n/
+
+

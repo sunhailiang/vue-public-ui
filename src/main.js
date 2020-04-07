@@ -11,7 +11,10 @@ import {
   Menu,
   Form,
   Input,
-  Select
+  Select,
+  LocaleProvider,
+  Dropdown,
+  DatePicker
 } from "ant-design-vue";
 
 // 引入权限组件
@@ -33,7 +36,9 @@ const IconFont = Icon.createFromIconfontCN({
 // 全局注册
 Vue.component("IconFont", IconFont);
 Vue.config.productionTip = false;
-
+Vue.use(LocaleProvider);
+Vue.use(Dropdown);
+Vue.use(DatePicker);
 Vue.use(Button);
 Vue.use(Layout);
 Vue.use(Icon);

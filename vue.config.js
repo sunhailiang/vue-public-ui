@@ -1,12 +1,30 @@
+const path = require("path");
+const AntDesignThemePlugin = require("antd-theme-webpack-plugin");
+const options = {
+  antDir: path.join(__dirname, "./node_modules/ant-design-vue"),
+  stylesDir: path.join(__dirname, "./src"),
+  varFile: path.join(
+    __dirname,
+    "./node_modules/ant-design-vue/lib/style/themes/default.less"
+  ),
+  mainLessFile: "",
+  themeVariables: ["@primary-color"],
+  generateOnce: false,
+  customColorRegexArray: [] // An array of regex codes to match your custom color variable values so that code can identify that it's a valid color. Make sure your regex does not adds false positives.
+};
+const themePlugin = new AntDesignThemePlugin(options);
+
 module.exports = {
+  configureWebpack: {
+    plugins: [themePlugin]
+  },
+
   css: {
     loaderOptions: {
       less: {
         modifyVars: {
           // 配置主题
-          "primary-color": "#1DA57A",
-          "link-color": "#1DA57A",
-          "border-radius-base": "2px"
+          "primary-color": "#1DA57A"
         },
         javascriptEnabled: true
       }

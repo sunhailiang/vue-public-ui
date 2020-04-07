@@ -2,7 +2,7 @@
   <div>
     <a-drawer :placement="placement" :closable="false" :visible="visible">
       <template v-slot:handle>
-        <div class="handle" @click="visible = !visible">
+        <div class="setting-handle" @click="visible = !visible">
           <a-icon :type="visible ? 'close' : 'setting'"></a-icon>
         </div>
       </template>
@@ -43,18 +43,6 @@ export default {
   }
 };
 </script>
-<style lang="less" scoped>
-.handle {
-  position: absolute;
-  top: 300px;
-  right: 268px;
-  background-color: saddlebrown;
-  height: 40px;
-  width: 40px;
-  line-height: 40px;
-  text-align: center;
-  background-color: #1890ff;
-  border-radius: 5px;
-  color: white;
-}
+<style lang="less">
+@import url("./index.less");
 </style>
