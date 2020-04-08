@@ -1,7 +1,9 @@
 // 获取权限
+const currentAuth = ["admin"];
+export { currentAuth };
 export function getCurrentAuthority() {
   // 这里返回的权限应该是从后端读取回来的，此时用admin替代
-  return ["admin"];
+  return currentAuth;
 }
 
 // 鉴权

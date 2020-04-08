@@ -2,7 +2,9 @@
   <div ref="chart" style="height:400px;"></div>
 </template>
 <script>
-import echarts from "echarts";
+import echarts from "echarts/lib/echarts";
+import "echarts/lib/chart/bar";
+import "echarts/lib/component/title";
 import { addListener, removeListener } from "resize-detector";
 import { debounce } from "lodash";
 export default {
@@ -14,7 +16,6 @@ export default {
     }
   },
   mounted() {
-    console.log("进来了吧", this.option);
     this.renderChar();
     // 监听数据dom变化
     addListener(this.$refs.chart, this.resize);
@@ -28,7 +29,6 @@ export default {
       this.chart.setOption(this.option);
     },
     resize() {
-      console.log("变化了");
       this.chart.resize();
     }
   },

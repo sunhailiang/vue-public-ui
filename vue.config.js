@@ -1,4 +1,5 @@
 const path = require("path");
+const webpack = require("webpack");
 const AntDesignThemePlugin = require("antd-theme-webpack-plugin");
 const options = {
   antDir: path.join(__dirname, "./node_modules/ant-design-vue"),
@@ -16,7 +17,12 @@ const themePlugin = new AntDesignThemePlugin(options);
 
 module.exports = {
   configureWebpack: {
-    plugins: [themePlugin]
+    plugins: [themePlugin, new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/)],
+    resolve: {
+      alias: {
+        "@ant-design-vue/lib/icon$": path.resolve(__dirname, "./src/icons.js")
+      }
+    }
   },
 
   css: {
@@ -46,7 +52,6 @@ module.exports = {
         target: "http://localhost:3000",
         bypass: function(req, res) {
           if (req.headers.accept.indexOf("html") !== -1) {
-            console.log("Skipping proxy for browser request.");
             return "/index.html";
           } else if (process.env.MOCK === "true") {
             const name = req.path.split("/")[3];

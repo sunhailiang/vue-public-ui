@@ -7,8 +7,6 @@ function request(options) {
       return res;
     })
     .catch(error => {
-      console.log("有什么？", error);
-
       const {
         response: { status, statusText }
       } = error;

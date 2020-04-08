@@ -2,6 +2,13 @@ import Vue from "vue";
 import App from "./App.vue";
 import router from "./router/router_regurd";
 import store from "./store";
+import enUS from "./locale/enUS";
+import zhCN from "./locale/zhCN";
+import VueI18n from "vue-i18n";
+import queryString from "query-string";
+import "moment/locale/zh-cn"; // 引入中文包，默认是英文的不必理会
+import VueHighlightJS from "vue-highlightjs";
+import "highlight.js/styles/github.css";
 import {
   Button,
   Layout,
@@ -33,6 +40,17 @@ Vue.use(auth);
 const IconFont = Icon.createFromIconfontCN({
   scriptUrl: "//at.alicdn.com/t/font_1729142_zj4yiayd61.js"
 });
+
+// 注册国际化插件
+Vue.use(VueI18n);
+const i18n = new VueI18n({
+  locale: queryString.parse(location.search).locale || "zhCN",
+  messages: {
+    zhCN: { message: zhCN },
+    enUS: { message: enUS }
+  }
+});
+
 // 全局注册
 Vue.component("IconFont", IconFont);
 Vue.config.productionTip = false;
@@ -48,7 +66,9 @@ Vue.use(Menu);
 Vue.use(Form);
 Vue.use(Input);
 Vue.use(Select);
+Vue.use(VueHighlightJS);
 new Vue({
+  i18n,
   router,
   store,
   render: h => h(App)

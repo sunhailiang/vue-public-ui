@@ -27,6 +27,7 @@ export default {
   methods: {
     localeChange(obj) {
       this.$router.push({ query: { locale: obj.key } });
+      this.$i18n.locale = obj.key;
     }
   }
 };

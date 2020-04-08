@@ -1,15 +1,20 @@
 <template>
   <div>
-    <a-date-picker @change="onChange" />
+    {{ $t("message")["app.dashboard.analysis.timeLable"] }}
+    <a-date-picker />
     <Chart :option="opitons" style="height:400px" />
+    <pre v-highlightjs="chartCode"><code class="html"></code></pre>
   </div>
 </template>
 <script>
 import Chart from "@/components/chart/Chart";
+// 导出组件代码字符串
+import chartCode from "!!raw-loader!@/components/chart/Chart";
 import request from "@/utils/request";
 export default {
   data() {
     return {
+      chartCode, //chart代码字符串
       // 指定图表的配置s项和数据
       fuck: "FUCK",
       opitons: {
@@ -48,9 +53,9 @@ export default {
   },
   methods: {
     // 日期事件
-    onChange(date, dateString) {
-      console.log(date, dateString);
-    },
+    // onChange(date, dateString) {
+    //   console.log(date, dateString);
+    // },
 
     // 模拟mock数据
     getCharData() {

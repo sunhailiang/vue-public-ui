@@ -389,8 +389,6 @@ vsCode-> 应用商店-> Ant Deisign Vue helper
 
 ```js
     handleSettingChange(type, value) {
-      console.log('类型', type)
-      console.log('类型', value)
       this.$router.push({ query: { ...this.$route.query, [type]: value } }) // 通知路由风格设计
     }
 ```
@@ -700,7 +698,6 @@ export default {
        ) {
          menuData.push(...this.getMenuData(item.children))
        }
-       console.log('去你吗的', menuData)
      })
      return menuData
    }
@@ -1287,12 +1284,9 @@ Vue.use(auth)
   },
   methods: {
     resize() {
-      console.log('变化了')
-
       this.chart.resize()
     },
     removeChart() {
-      console.log('卸载')
     }
   },
   beforeDestroy() {
@@ -1349,7 +1343,6 @@ Vue.use(auth)
       this.chart.setOption(this.option)
     },
     resize() {
-      console.log('变化了')
       this.chart.resize()
     }
   },
@@ -2267,5 +2260,260 @@ export default {
    - 你可以自己写json文件去处理，也就是什么能，原来写中文的地方换成一个占位符，然后进行文件读取，根据router参数判断读取的中文文件渲染还是英文文件渲染
 ## 摊牌了，vue有国际化插件
 - https://kazupon.github.io/vue-i18n/
+- 老规矩，先安装，在全局注册
+- 新建一个locale语言包
+- 新建zhCN.js
+```js
+export default {
+  // 注意这个key哦
+  "app.dashboard.analysis.timeLable": "时间"
+};
+
+```
+- 新建enUS.js
+```js
+export default {
+  // 注意这个key哦
+  "app.dashboard.analysis.timeLable": "Time"
+};
+```
+- 使用一个解析路由字符串的包query-string,记得安装
+- main.js
+```js
+// 新建的语言包
+import enUS from "./locale/enUS";
+// 新建的语言包
+import zhCN from "./locale/zhCN";
+import VueI18n from "vue-i18n";
+import queryString from "query-string";
+// 注册国际化插件
+Vue.use(VueI18n);
+const i18n = new VueI18n({
+  locale: queryString.parse(location.search).locale || "zhCN", // 解析路由地址看看有没有语言切换标志
+  messages: {
+    zhCN: { message: zhCN },
+    enUS: { message: enUS }
+  }
+});
+new Vue({
+  i18n,// 挂在到vue对象上方便使用
+  render: h => h(App)
+}).$mount("#app");
+
+```
+- header.vue
+```js
+    localeChange(obj) {
+      this.$router.push({ query: { locale: obj.key } });
+      // 切换路由的同时，告诉i18n你选的语言
+      this.$i18n.locale = obj.key; 
+    }
+```
+- 回到Dashboard/Analysis.vue
+```html
+     <!-- 在日期控件前面写一句下面的代码，所用是什么？ -->
+     <!-- 根据路由切换，i18n抓取到你要的语言，然后从对应的语言包中，读取对应的key显示出对应语言的文案!!!! -->
+    {{ $t("message")["app.dashboard.analysis.timeLable"] }}
+```
+
+# 高效打包优化
+- 首先我们打包后可以去观察当前打包的一些大小
+-  npm run build -- --report
+   - 运行完之后,你可以在dist目录中看到一个report.html打开它就你能看到根据你当前的打包分析出来的体积信息图
+- 那么处理这块常规手段
+   - icon按需加载
+   - 组件按需加载
+   - moment优化
+   - echart 按需加载
+- 组件按需加载环境搭建时我们已经处理了
+- 下面icon的按需加载
+- 新建src/icon.js
+```js
+// 图标的按需加载
+export { default as SettingOutline } from "@ant-design/icons/outline/SettingOutline";
+```
+- webpack配置
+```js
+ configureWebpack: {
+    resolve: {
+      alias: {
+        "@ant-design-vue/lib/icon$": path.resolve(__dirname, "./src/icons.js")
+      }
+    }
+  },
+```
+- 下面时moment按需加载
+- https://github.com/jmblog/how-to-optimize-momentjs-with-webpack
+- vue.config.js
+```js
+const webpack = require("webpack"); // 引入webpack
+// 添加插件
+configureWebpack: {
+    plugins: [new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/)],
+  },
+```
+- main.js
+```js
+import "moment/locale/zh-cn"; // 引入中文包，默认是英文的不必理会
+```
+- 下面是chart按需加载
+   - 需要哪种图就只需要打包那种代码， 而不是全部打包
+```js
+import echarts from "echarts/lib/echarts";
+// 用了柱状图，就只引入柱状图
+import "echarts/lib/chart/bar";
+import "echarts/lib/component/title";
+```
+- 至此重新运行打包命令，你会发现代码体积小了很多
+- 当然了，根据项目实际需要，还会有很多优化的点
+# 可交互的组件文档
+- 这玩意就是用来展示组件的代码而已，看起来比较直观一些
+ - cnpm i raw-loader --save-dev
+ - 将组件代码导出成字符串
+ - Analysis.vue
+ ```js
+ // 导出组件代码字符串
+  import chartCode from "!!raw-loader!@/components/chart/Chart";
+  export default {
+  data() {
+    return {
+      chartCode, //chart代码字符串
+    }
+  }
+ ```
+ - 此时呢你把 **chartCode** 扔到页面花括号里就已经可以看到代码了
+ - 但是视觉太差，我们改一下，用highlight.js高亮展示
+ - cnpm i --save vue-highlightjs
+ - 然后main.js中引入注册
+ ```js
+ import VueHighlightJS from "vue-highlightjs";
+ Vue.use(VueHighlightJS);
+ ```
+ - Analysis.vue
+ ```html
+    <pre v-highlightjs="chartCode"><code class="html"></code></pre>
+ ```
+ - 此时刷新页面已经有了组件代码
+ - 在添加高亮效果
+ - https://highlightjs.org/ 去官方找你想要的效果
+ - main.js
+ ```js
+ import 'highlight.js/styles/github.css';
+ ```
+ - 此时刷新就有了高亮效果
+
+# 单元测试
+
+- 单元测试不用说了吧，就是测试写的js的执行情况咯
+- jest.config.js
+```js
+module.exports = {
+  moduleFileExtensions: ["js", "jsx", "json", "vue"],
+  transform: {
+    "^.+\\.vue$": "vue-jest",
+    ".+\\.(css|styl|less|sass|scss|svg|png|jpg|ttf|woff|woff2)$":
+      "jest-transform-stub",
+    "^.+\\.jsx?$": "babel-jest"
+  },
+  transformIgnorePatterns: ["/node_modules/"],
+  moduleNameMapper: {
+    "^@/(.*)$": "<rootDir>/src/$1"
+  },
+  snapshotSerializers: ["jest-serializer-vue"],
+  testMatch: ["**/*.spec.(js|jsx|ts|tsx)|**/__tests__/*.(js|jsx|ts|tsx)"],
+  testURL: "http://localhost/",
+  collectCoverage: process.env.COVERAGE === "true", // 是否生成测试报告
+  collectCoverageFrom: ["src/**/*.{js,vue}", "!**/node_modules/**"] // 测试覆盖
+};
+```
+- .eslintrc.js
+```js
+  env: {
+    jest: true
+  },
+```
+- 我们以测试auth->index.js
+- 稍微修改一下代码
+```js
+// 获取权限
+const currentAuth = ["admin"];
+// 导出当前权限
+export { currentAuth };
+export function getCurrentAuthority() {
+  // 这里返回的权限应该是从后端读取回来的，此时用admin替代
+  return currentAuth;
+}
+// 鉴权
+export function check(authority) {
+  const current = getCurrentAuthority();
+  return current.some(item => authority.includes(item));
+}
+// 判断是否登陆
+export function isLogin() {
+  const current = getCurrentAuthority();
+  return current && current[0] !== "guest";
+}
+
+```
+- 在tests->unit中新增auth的单侧文件
+- auth.spec.js
+```js
+import { check, currentAuth } from "@/auth";
+describe("auth test", () => {
+  // 测试没权限
+  it("empty auth", () => {
+    currentAuth.splice(0, currentAuth.length);
+    expect(check(["user"])).toEqual(false);
+    expect(check(["admin"])).toEqual(false);
+  });
+  it("user auth", () => {
+     // 测试user
+    currentAuth.splice(0, currentAuth.length);
+    currentAuth.push("user");
+    expect(check(["user"])).toEqual(true);
+    expect(check(["admin"])).toEqual(false);
+  });
+  it("admin auth", () => {
+    // 测试admin和user
+    currentAuth.push("admin");
+    expect(check(["user"])).toEqual(true);
+    expect(check(["admin"])).toEqual(true);
+    expect(check(["user", "admin"])).toEqual(true);
+  });
+});
+```
+# 发布npm包
+- 其实很简单
+- 有一个npm账号
+- 在你的项目添加一个json，至少包含两个属性
+   - name:'项目名称'  --注意：不能重复
+   - version：'版本信息'
+- 但是关于源头：
+   - 有的是本地使用了淘宝源头
+   - 有的是用了npm官方
+   - 还有自己公司的源头
+   - 这么多怎么区分呢？
+   - 使用nrm 
+      - https://www.npmjs.com/package/nrm
+      - npm install -g nrm
+   - 然后通过nrm use 源头名称  就可以随意切换了
+   - 当然还有一些跟发包不是很相关的属性，自己去研究吧
+
+# github的相关生态工具（开源项目）
+## CI持续集成
+- https://travis-ci.org
+- https://circleci.com
+- 当然了我们可以使用Jenkins本地部署（推荐）
+## 单测覆盖率
+- 可以生成单侧报告，让项目使用者更加清晰测试覆盖程度，以供选择
+- https://codecov.io
+- https://coveralls.io
+## 文档管理
+github.io
+gitee.io
+https://www.netlify.com
+## isuse使用
+https://github/apps/close-issue-app
+
 
 

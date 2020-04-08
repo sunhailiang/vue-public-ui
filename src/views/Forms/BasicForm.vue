@@ -108,7 +108,6 @@ export default {
           (this.phoneHelpText = "手机不得少于11位");
         return;
       }
-      console.log("表单的值:", this.userName, "什么鬼?：", this.phone);
     },
     handleFormLayoutChange(e) {
       this.formLayout = e.target.value;
