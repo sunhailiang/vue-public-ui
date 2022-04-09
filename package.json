@@ -15,7 +15,7 @@
     "core-js": "^3.3.2",
     "cross-env": "^7.0.2",
     "echarts": "^4.7.0",
-    "moment": "^2.24.0",
+    "moment": "^2.29.2",
     "nprogress": "^0.2.0",
     "resize-detector": "^0.2.1",
     "vue": "^2.6.10",
